@@ -197,7 +197,7 @@ export const PayrollModule: React.FC = () => {
   const [attDateTo, setAttDateTo] = useState<string>(todayIso);
   const [attSearchQuery, setAttSearchQuery] = useState<string>('');
   const [attDeptFilter, setAttDeptFilter] = useState<string>('All');
-  const [attDesignationFilter, setAttDesignationFilter] = useState<string>('All');
+  const [attActionTypeFilter, setAttActionTypeFilter] = useState<string>('All');
   const [attOfficeFilter, setAttOfficeFilter] = useState<string>('All');
   const [attStatusFilter, setAttStatusFilter] = useState<string>('All');
   const [historyEmployee, setHistoryEmployee] = useState<FieldForceRep | null>(null);
@@ -404,11 +404,19 @@ export const PayrollModule: React.FC = () => {
     'Management Employee',
   ];
 
-  // Unique designations & offices for Attendance Report filters
-  const designationOptions = useMemo(() => {
-    const set = new Set<string>();
+  // Employee Action Types & offices for Attendance Report filters
+  const actionTypeOptions = useMemo(() => {
+    const set = new Set<string>([
+      'Primary Order Booking',
+      'Secondary Sales & Delivery',
+      'Corporate Key Accounts',
+      'Market Survey & Field Audit',
+      'Supervisory Inspection',
+      'Staff',
+      'Worker',
+    ]);
     fieldForceReps.forEach((r) => {
-      if (r.designation) set.add(r.designation);
+      if (r.actionType) set.add(r.actionType);
     });
     return ['All', ...Array.from(set)];
   }, [fieldForceReps]);
@@ -483,6 +491,7 @@ export const PayrollModule: React.FC = () => {
       employeeName: rec.employeeName || emp?.name || 'Unknown Employee',
       department: rec.department || emp?.department || 'Operations',
       designation: rec.designation || emp?.designation || 'Executive',
+      actionType: emp?.actionType || '',
       assignedOffice: officeName,
       checkIn,
       checkOut,
@@ -506,7 +515,7 @@ export const PayrollModule: React.FC = () => {
           if (!hay.includes(q)) return false;
         }
         if (attDeptFilter !== 'All' && meta.department !== attDeptFilter) return false;
-        if (attDesignationFilter !== 'All' && meta.designation !== attDesignationFilter) return false;
+        if (attActionTypeFilter !== 'All' && meta.actionType !== attActionTypeFilter) return false;
         if (attOfficeFilter !== 'All' && meta.assignedOffice !== attOfficeFilter) return false;
         if (attStatusFilter !== 'All') {
           if (attStatusFilter === 'Half Day') {
@@ -531,7 +540,7 @@ export const PayrollModule: React.FC = () => {
     attDateTo,
     attSearchQuery,
     attDeptFilter,
-    attDesignationFilter,
+    attActionTypeFilter,
     attOfficeFilter,
     attStatusFilter,
     employeeLookupById,
@@ -547,14 +556,14 @@ export const PayrollModule: React.FC = () => {
           employeeLookupById.get(att.employeeId) ||
           employeeLookupById.get(att.employeeCode || '');
         const dept = att.department || emp?.department || 'Operations';
-        const desig = att.designation || emp?.designation || 'Executive';
+        const actionType = emp?.actionType || '';
         const office = att.assignedOfficeName || emp?.assignedOfficeName || emp?.branchWorkplace || 'Head Office';
         if (q) {
           const hay = `${att.employeeCode || ''} ${att.employeeName} ${dept} ${office} ${att.rejectionReason}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         if (attDeptFilter !== 'All' && dept !== attDeptFilter) return false;
-        if (attDesignationFilter !== 'All' && desig !== attDesignationFilter) return false;
+        if (attActionTypeFilter !== 'All' && actionType !== attActionTypeFilter) return false;
         if (attOfficeFilter !== 'All' && office !== attOfficeFilter) return false;
         return true;
       })
@@ -565,7 +574,7 @@ export const PayrollModule: React.FC = () => {
     attDateTo,
     attSearchQuery,
     attDeptFilter,
-    attDesignationFilter,
+    attActionTypeFilter,
     attOfficeFilter,
     employeeLookupById,
   ]);
@@ -576,11 +585,11 @@ export const PayrollModule: React.FC = () => {
       .filter((emp) => {
         const office = emp.assignedOfficeName || emp.branchWorkplace || 'Head Office';
         if (q) {
-          const hay = `${emp.code} ${emp.name} ${emp.department || ''} ${emp.employeeCategory || ''} ${office}`.toLowerCase();
+          const hay = `${emp.code} ${emp.name} ${emp.department || ''} ${emp.employeeCategory || ''} ${emp.actionType || ''} ${office}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         if (attDeptFilter !== 'All' && (emp.department || 'Operations') !== attDeptFilter) return false;
-        if (attDesignationFilter !== 'All' && (emp.designation || 'Executive') !== attDesignationFilter) return false;
+        if (attActionTypeFilter !== 'All' && (emp.actionType || '') !== attActionTypeFilter) return false;
         if (attOfficeFilter !== 'All' && office !== attOfficeFilter) return false;
         return true;
       })
@@ -628,7 +637,7 @@ export const PayrollModule: React.FC = () => {
     attDateTo,
     attSearchQuery,
     attDeptFilter,
-    attDesignationFilter,
+    attActionTypeFilter,
     attOfficeFilter,
   ]);
 
@@ -1823,13 +1832,14 @@ export const PayrollModule: React.FC = () => {
               </select>
 
               <select
-                value={attDesignationFilter}
-                onChange={(e) => setAttDesignationFilter(e.target.value)}
+                value={attActionTypeFilter}
+                onChange={(e) => setAttActionTypeFilter(e.target.value)}
+                aria-label="Filter by Employee Action Type"
                 className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold"
               >
-                {designationOptions.map((desig) => (
-                  <option key={desig} value={desig}>
-                    Designation: {desig}
+                {actionTypeOptions.map((actionType) => (
+                  <option key={actionType} value={actionType}>
+                    Employee Action Type: {actionType}
                   </option>
                 ))}
               </select>
@@ -1933,7 +1943,7 @@ export const PayrollModule: React.FC = () => {
                         <th className="py-2.5 px-3">Employee ID</th>
                         <th className="py-2.5 px-3">Employee Name</th>
                         <th className="py-2.5 px-3">Employee Category</th>
-                        <th className="py-2.5 px-3">Assigned Office</th>
+                        <th className="py-2.5 px-3">Employee Action Type</th>
                         <th className="py-2.5 px-3 text-center">Present</th>
                         <th className="py-2.5 px-3 text-center">Late</th>
                         <th className="py-2.5 px-3 text-center">Half Day</th>
@@ -1955,7 +1965,7 @@ export const PayrollModule: React.FC = () => {
                           <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
                             {row.emp.employeeCategory || '—'}
                           </td>
-                          <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{row.assignedOffice}</td>
+                          <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{row.emp.actionType || '—'}</td>
                           <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-600 tabular-nums">
                             {row.presentDays}
                           </td>
@@ -2291,7 +2301,35 @@ export const PayrollModule: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {fieldForceReps.map((emp) => {
+                      {fieldForceReps
+                        .filter((emp) => {
+                          const office = emp.assignedOfficeName || emp.branchWorkplace || 'Head Office';
+                          if (attSearchQuery.trim()) {
+                            const q = attSearchQuery.trim().toLowerCase();
+                            const hay = `${emp.code} ${emp.name} ${emp.department || ''} ${emp.employeeCategory || ''} ${emp.actionType || ''} ${office}`.toLowerCase();
+                            if (!hay.includes(q)) return false;
+                          }
+                          if (attDeptFilter !== 'All' && (emp.department || 'Operations') !== attDeptFilter) return false;
+                          if (attActionTypeFilter !== 'All' && (emp.actionType || '') !== attActionTypeFilter) return false;
+                          if (attOfficeFilter !== 'All' && office !== attOfficeFilter) return false;
+                          if (attStatusFilter !== 'All') {
+                            const rec = attendanceRecords.find(
+                              (a) =>
+                                (a.employeeId === emp.id || a.fieldForceId === emp.id || a.employeeCode === emp.code) &&
+                                a.date === selectedDateForAtt
+                            );
+                            const st = rec ? rec.status : 'Absent';
+                            if (attStatusFilter === 'Half Day') {
+                              if (st !== 'Half Day' && st !== 'Half-Day') return false;
+                            } else if (attStatusFilter === 'Leave') {
+                              if (st !== 'Leave' && st !== 'Paid Leave' && st !== 'Unpaid Leave') return false;
+                            } else if (st !== attStatusFilter) {
+                              return false;
+                            }
+                          }
+                          return true;
+                        })
+                        .map((emp) => {
                         const todayRec = attendanceRecords.find(
                           (a) =>
                             (a.employeeId === emp.id || a.fieldForceId === emp.id || a.employeeCode === emp.code) &&

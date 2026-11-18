@@ -4103,6 +4103,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               email: row.email || undefined,
               designation: row.designation || '',
               fieldForceType: row.field_force_type || undefined,
+              actionType: row.action_type || undefined,
               department: row.department || undefined,
               departments: Array.isArray(row.departments)
                 ? row.departments
@@ -16196,6 +16197,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         phone: newRep.phone ?? '',
         designation: newRep.designation ?? '',
         field_force_type: newRep.fieldForceType || null,
+        action_type: newRep.actionType || null,
         department: newRep.department || null,
         departments: Array.isArray(newRep.departments) ? newRep.departments : [],
         region: newRep.region,
@@ -16333,6 +16335,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (updates.email !== undefined) payload.email = updates.email;
       if (updates.designation !== undefined) payload.designation = updates.designation ?? '';
       if (updates.fieldForceType !== undefined) payload.field_force_type = updates.fieldForceType || null;
+      if (updates.actionType !== undefined) payload.action_type = updates.actionType || null;
       if (updates.department !== undefined) payload.department = updates.department || null;
       if (updates.departments !== undefined) payload.departments = Array.isArray(updates.departments) ? updates.departments : [];
       if (updates.region !== undefined) payload.region = updates.region;
