@@ -1928,9 +1928,7 @@ export const PayrollModule: React.FC = () => {
                     <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">
                       Employee Attendance Summary ({attDateFrom} to {attDateTo})
                     </h3>
-                    <p className="text-[11px] text-slate-500">
-                      Click View History on any employee to inspect full check-in/out logs and rejected GPS attempts.
-                    </p>
+                    
                   </div>
                   <span className="text-xs font-mono font-bold text-slate-500">
                     {employeePeriodSummaries.length} Employees
@@ -2026,58 +2024,10 @@ export const PayrollModule: React.FC = () => {
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                     Daily Attendance & Biometric / Admin Override Grid
                   </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Enter or update Check In and Check Out times directly, or use Quick Actions to save to Supabase.
-                  </p>
+                  
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {attendanceDbStatus.synced ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70 text-[10px] font-bold">
-                      <Database className="w-3 h-3" />
-                      Supabase Synced
-                    </span>
-                  ) : attendanceDbStatus.status !== 'unknown' ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/70 text-[10px] font-bold">
-                      <Database className="w-3 h-3" />
-                      {attendanceDbStatus.status === 'rls_blocked'
-                        ? 'Supabase RLS Blocked'
-                        : attendanceDbStatus.status === 'table_missing'
-                        ? 'Supabase Table Missing'
-                        : 'Supabase Sync Needed'}
-                    </span>
-                  ) : null}
-
-                  {canCreatePayroll && (
-                    <button
-                      type="button"
-                      disabled={isSyncingAttendance}
-                      onClick={async () => {
-                        setIsSyncingAttendance(true);
-                        setAttendanceFeedback(null);
-                        const res = await syncAttendanceToSupabase();
-                        setIsSyncingAttendance(false);
-                        if (res.success && res.dbSynced) {
-                          setAttendanceFeedback({
-                            type: 'success',
-                            message: `Synced ${res.syncedCount} attendance record(s) directly to Supabase employee_attendances.`,
-                          });
-                        } else {
-                          setAttendanceFeedback({
-                            type: 'warning',
-                            message:
-                              res.error ||
-                              'Could not sync attendance to Supabase. Run the SQL fix below in Supabase SQL Editor.',
-                            sqlFix: res.sqlFix || EMPLOYEE_ATTENDANCES_TABLE_SQL,
-                          });
-                        }
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-semibold transition-colors disabled:opacity-50"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${isSyncingAttendance ? 'animate-spin' : ''}`} />
-                      <span>{isSyncingAttendance ? 'Syncing...' : 'Sync to Supabase'}</span>
-                    </button>
-                  )}
-
+                  
                   <button
                     type="button"
                     onClick={() =>
