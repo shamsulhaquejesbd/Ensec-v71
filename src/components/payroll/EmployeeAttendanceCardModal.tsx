@@ -832,7 +832,7 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
               {/* ================================================================= */}
               <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2">
                 {/* TOP LEFT PANEL: Summary + Timekeeper + Rules + Authority */}
-                <div className="pr-0 md:pr-5 pb-3 md:pb-1 border-b md:border-b-0 md:border-r border-slate-700/60 print:border-b-0 print:border-r print:border-black print:pr-4 flex flex-col justify-between">
+                <div className="pr-0 md:pr-5 pb-4 md:pb-3 print:pb-3 border-b md:border-b-0 md:border-r border-slate-700/60 print:border-b-0 print:border-r print:border-black print:pr-4 flex flex-col justify-between">
                   <div>
                     <div className="space-y-2 text-[13px] leading-snug">
                       <div className="grid grid-cols-12 items-baseline gap-1">
@@ -931,7 +931,7 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
                 </div>
 
                 {/* TOP RIGHT PANEL: Company Header + Boxed Title + Employee Info */}
-                <div className="pl-0 md:pl-5 pt-3 md:pt-0 pb-1 print:pl-4 print:pt-0 flex flex-col justify-between">
+                <div className="pl-0 md:pl-5 pt-3 md:pt-0 pb-3 print:pl-4 print:pt-0 print:pb-3 flex flex-col justify-between">
                   <div className="text-center pt-1 pb-3">
                     {systemSettings?.branding?.logoDataUrl && (
                       <div className="flex justify-center mb-1">
@@ -967,9 +967,9 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
                           {activeEmployee.code || activeEmployee.id}
                         </span>
                       </div>
-                      <div className="flex items-baseline gap-1 w-[42%] shrink-0">
+                      <div className="flex items-baseline gap-1 w-[49%] shrink-0">
                         <span className="font-medium shrink-0">শিফটঃ</span>
-                        <span className="flex-1 border-b border-dotted border-black px-1 font-mono text-[10.5px] text-center truncate">
+                        <span className="flex-1 border-b border-dotted border-black px-1 font-mono text-[10px] text-center whitespace-nowrap">
                           {shiftLabel}
                         </span>
                       </div>
@@ -1022,7 +1022,7 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
               {/* ================================================================= */}
               {/* BOTTOM HALF: SPLIT DAILY ATTENDANCE GRID (১-১৬ | ১৭-৩১)           */}
               {/* ================================================================= */}
-              <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-0 border border-black print:grid-cols-2">
+              <div className="mt-6 print:mt-5 grid grid-cols-1 lg:grid-cols-2 gap-0 border border-black print:grid-cols-2">
                 {/* LEFT TABLE: Days ১ to ১৬ */}
                 <div className="border-b lg:border-b-0 lg:border-r border-black print:border-b-0 print:border-r">
                   <table className="w-full border-collapse text-[10.5px] text-black tabular-nums">
