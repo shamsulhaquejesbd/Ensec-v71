@@ -96,6 +96,7 @@ import {
 } from '../../types/payroll.ts';
 import { FieldForceRep } from '../../types/erp.ts';
 import { EmployeeAttendanceCardModal } from './EmployeeAttendanceCardModal.tsx';
+import { DailyWagesBillFactory } from './DailyWagesBillFactory.tsx';
 import { Time12HourInput } from '../common/Time12HourInput.tsx';
 
 type PayrollTab =
@@ -117,6 +118,7 @@ export const PayrollModule: React.FC = () => {
     currentUser,
     systemSettings,
     fieldForceReps,
+    departments,
     officeLocations,
     salaryStructures,
     salaryStructuresDbStatus,
@@ -186,7 +188,7 @@ export const PayrollModule: React.FC = () => {
 
   // Attendance Report & GPS Audit Filter States
   const currentMonthStartIso = `${currentMonthIso}-01`;
-  const [attSubView, setAttSubView] = useState<'report' | 'daily_grid' | 'rejected'>('report');
+  const [attSubView, setAttSubView] = useState<'report' | 'daily_grid' | 'daily_wages_bill'>('report');
   const [attPeriodMode, setAttPeriodMode] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('monthly');
   const [attDateFrom, setAttDateFrom] = useState<string>(currentMonthStartIso);
   const [attDateTo, setAttDateTo] = useState<string>(todayIso);
@@ -372,14 +374,56 @@ export const PayrollModule: React.FC = () => {
     return monthlyPayrollRuns.find((r) => (r.monthYear || r.payrollMonth) === selectedMonthYear);
   }, [monthlyPayrollRuns, selectedMonthYear]);
 
-  // Unique departments
+  // Unique departments (master Departments + employee assignments)
   const departmentOptions = useMemo(() => {
-    const set = new Set<string>();
+    const seen = new Set<string>();
+    const list: string[] = [];
+    const stripCode = (raw: string) => {
+      const s = String(raw || '').trim();
+      if (!s) return '';
+      const matched = (departments || []).find((d) => {
+        const c = String(d.code || '').trim();
+        return (
+          (d.name && d.name.toLowerCase() === s.toLowerCase()) ||
+          (d.fullName && d.fullName.toLowerCase() === s.toLowerCase()) ||
+          (c && d.name && `${c} - ${d.name}`.toLowerCase() === s.toLowerCase())
+        );
+      });
+      if (matched?.name) return matched.name.trim();
+      return s.replace(/^[A-Z]{1,6}-\d+\s*[-–—:]\s*/i, '').trim() || s;
+    };
+    const addDept = (raw?: string) => {
+      const clean = stripCode(String(raw || ''));
+      if (!clean) return;
+      const key = clean.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push(clean);
+      }
+    };
+    (departments || [])
+      .filter((d) => !d.status || d.status.toLowerCase() === 'active')
+      .forEach((d) => addDept(d.name || d.fullName));
     fieldForceReps.forEach((r) => {
-      if (r.department) set.add(r.department);
+      addDept(r.department);
+      (r.departments || []).forEach(addDept);
     });
-    return ['All', ...Array.from(set)];
-  }, [fieldForceReps]);
+    return ['All', ...list];
+  }, [departments, fieldForceReps]);
+
+  const matchesAttDept = (
+    deptVal?: string,
+    deptList?: string[]
+  ): boolean => {
+    if (!attDeptFilter || attDeptFilter === 'All') return true;
+    const target = attDeptFilter.trim().toLowerCase();
+    const candidates = [deptVal, ...(deptList || [])].filter(Boolean) as string[];
+    return candidates.some((c) => {
+      const raw = c.trim().toLowerCase();
+      const stripped = c.replace(/^[A-Z]{1,6}-\d+\s*[-–—:]\s*/i, '').trim().toLowerCase();
+      return raw === target || stripped === target;
+    });
+  };
 
   // Unique employee categories
   const categoryOptions: string[] = [
@@ -502,7 +546,7 @@ export const PayrollModule: React.FC = () => {
           const hay = `${meta.employeeCode} ${meta.employeeName} ${meta.department} ${meta.assignedOffice}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
-        if (attDeptFilter !== 'All' && meta.department !== attDeptFilter) return false;
+        if (!matchesAttDept(meta.department, meta.emp?.departments)) return false;
         if (attActionTypeFilter !== 'All' && meta.actionType !== attActionTypeFilter) return false;
         if (attOfficeFilter !== 'All' && meta.assignedOffice !== attOfficeFilter) return false;
         if (attStatusFilter !== 'All') {
@@ -576,7 +620,7 @@ export const PayrollModule: React.FC = () => {
           const hay = `${emp.code} ${emp.name} ${emp.department || ''} ${emp.employeeCategory || ''} ${emp.actionType || ''} ${office}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
-        if (attDeptFilter !== 'All' && (emp.department || 'Operations') !== attDeptFilter) return false;
+        if (!matchesAttDept(emp.department || 'Operations', emp.departments)) return false;
         if (attActionTypeFilter !== 'All' && (emp.actionType || '') !== attActionTypeFilter) return false;
         if (attOfficeFilter !== 'All' && office !== attOfficeFilter) return false;
         return true;
@@ -1727,19 +1771,19 @@ export const PayrollModule: React.FC = () => {
                   Daily Grid ({selectedDateForAtt})
                 </button>
                 <button
-                  onClick={() => setAttSubView('rejected')}
+                  onClick={() => setAttSubView('daily_wages_bill')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    attSubView === 'rejected'
-                      ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-2xs'
+                    attSubView === 'daily_wages_bill'
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-2xs'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
                 >
-                  <XCircle className="w-3.5 h-3.5" />
-                  <span>Rejected Attempts ({filteredRejectedAttempts.length})</span>
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Daily Wages Bill of Factory</span>
                 </button>
               </div>
 
-              {canExportPayroll && (
+              {canExportPayroll && attSubView !== 'daily_wages_bill' && (
                 <button
                   onClick={handleExportAttendanceExcel}
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs"
@@ -2571,84 +2615,17 @@ export const PayrollModule: React.FC = () => {
             </div>
           )}
 
-          {/* SUB-VIEW 3: SEPARATE REJECTED GPS ATTENDANCE ATTEMPTS AUDIT LOG */}
-          {attSubView === 'rejected' && (
-            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/50 shadow-2xs overflow-hidden">
-              <div className="px-4 py-3 border-b border-rose-100 dark:border-rose-900/40 bg-rose-50/60 dark:bg-rose-950/20 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-bold text-rose-900 dark:text-rose-200 flex items-center gap-2 uppercase tracking-wide">
-                    <AlertTriangle className="w-4 h-4 text-rose-600" />
-                    <span>Rejected GPS Attendance Attempts ({filteredRejectedAttempts.length})</span>
-                  </h3>
-                  <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5">
-                    Out-of-geofence punches, poor GPS signal attempts, or blocked requests are audited here and never marked Present.
-                  </p>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs whitespace-nowrap">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[10px] font-bold uppercase">
-                      <th className="py-2.5 px-3">Date & Time</th>
-                      <th className="py-2.5 px-3">Employee ID</th>
-                      <th className="py-2.5 px-3">Employee Name</th>
-                      <th className="py-2.5 px-3">Assigned Office</th>
-                      <th className="py-2.5 px-3">Attempt Type</th>
-                      <th className="py-2.5 px-3">Captured Coordinates</th>
-                      <th className="py-2.5 px-3 text-right">Distance / Limit</th>
-                      <th className="py-2.5 px-3 text-right">GPS Accuracy</th>
-                      <th className="py-2.5 px-3">Status</th>
-                      <th className="py-2.5 px-3">Rejection Reason</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredRejectedAttempts.length === 0 ? (
-                      <tr>
-                        <td colSpan={10} className="py-8 text-center text-slate-500 text-xs">
-                          No rejected GPS attendance attempts recorded for the active date range.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredRejectedAttempts.map((att) => (
-                        <tr key={att.id} className="hover:bg-rose-50/40 dark:hover:bg-rose-950/10">
-                          <td className="py-2.5 px-3 font-mono tabular-nums">
-                            {att.attendanceDate} {formatTime12Hour(att.attemptTime) || att.attemptTime}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono font-bold text-blue-600">
-                            {att.employeeCode || att.employeeId}
-                          </td>
-                          <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{att.employeeName}</td>
-                          <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
-                            {att.assignedOfficeName || 'Head Office'}
-                          </td>
-                          <td className="py-2.5 px-3 font-semibold">{att.attemptType}</td>
-                          <td className="py-2.5 px-3 font-mono text-[11px] tabular-nums text-slate-600 dark:text-slate-400">
-                            {typeof att.latitude === 'number' && typeof att.longitude === 'number'
-                              ? `${att.latitude.toFixed(5)}, ${att.longitude.toFixed(5)}`
-                              : 'Unavailable'}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-right font-bold text-rose-600 tabular-nums">
-                            {typeof att.distanceMeters === 'number' ? `${Math.round(att.distanceMeters)}m` : '—'} /{' '}
-                            {att.allowedRadiusMeters}m
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-right tabular-nums">
-                            {typeof att.gpsAccuracyMeters === 'number' ? `±${Math.round(att.gpsAccuracyMeters)}m` : '—'}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-                              {att.gpsValidationStatus}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 text-xs text-rose-700 dark:text-rose-300 max-w-xs truncate" title={att.rejectionReason}>
-                            {att.rejectionReason}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          {/* SUB-VIEW 3: DAILY WAGES BILL OF FACTORY REPORT */}
+          {attSubView === 'daily_wages_bill' && (
+            <DailyWagesBillFactory
+              searchQuery={attSearchQuery}
+              departmentFilter={attDeptFilter}
+              onDepartmentFilterChange={setAttDeptFilter}
+              actionTypeFilter={attActionTypeFilter}
+              officeFilter={attOfficeFilter}
+              activeMonthHint={(attDateFrom || selectedMonthYear).slice(0, 7)}
+              canExport={canExportPayroll}
+            />
           )}
         </div>
       )}

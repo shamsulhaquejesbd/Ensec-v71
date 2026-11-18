@@ -141,6 +141,24 @@ input[type="number"] {
     page: ot-bill-landscape;
   }
 
+  body.printing-wages-bill * {
+    visibility: hidden;
+  }
+  body.printing-wages-bill #daily-wages-bill-sheet,
+  body.printing-wages-bill #daily-wages-bill-sheet * {
+    visibility: visible;
+  }
+  body.printing-wages-bill #daily-wages-bill-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    overflow: visible !important;
+    page: ot-bill-landscape;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   body.printing-attendance-card *,
   body.printing-attendance-card-landscape * {
     visibility: hidden;
