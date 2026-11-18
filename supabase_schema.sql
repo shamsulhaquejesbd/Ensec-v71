@@ -3079,7 +3079,8 @@ ALTER TABLE IF EXISTS public.field_force_reps
   ADD COLUMN IF NOT EXISTS invoice_within_days INT DEFAULT 3,
   ADD COLUMN IF NOT EXISTS tada_approver_id TEXT,
   ADD COLUMN IF NOT EXISTS tada_approver_name TEXT,
-  ADD COLUMN IF NOT EXISTS gender TEXT;
+  ADD COLUMN IF NOT EXISTS gender TEXT,
+  ADD COLUMN IF NOT EXISTS action_type TEXT;
 
 -- 1. Employee Salary Structures Master
 CREATE TABLE IF NOT EXISTS public.employee_salary_structures (

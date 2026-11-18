@@ -1942,8 +1942,8 @@ export const PayrollModule: React.FC = () => {
                       <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[11px] font-semibold uppercase">
                         <th className="py-2.5 px-3">Employee ID</th>
                         <th className="py-2.5 px-3">Employee Name</th>
-                        <th className="py-2.5 px-3">Employee Category</th>
-                        <th className="py-2.5 px-3">Employee Action Type</th>
+                        <th className="py-2.5 px-3">Location</th>
+                        <th className="py-2.5 px-3">Employee Type</th>
                         <th className="py-2.5 px-3 text-center">Present</th>
                         <th className="py-2.5 px-3 text-center">Late</th>
                         <th className="py-2.5 px-3 text-center">Half Day</th>

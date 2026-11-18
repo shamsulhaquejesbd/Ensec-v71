@@ -4081,14 +4081,82 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const syncFieldForceActionTypeBackup = async (
+    entries: Array<{ id?: string; code?: string; actionType?: string | null }>,
+    removeKeys?: { id?: string; code?: string }
+  ) => {
+    const sb = getSupabase();
+    if (!sb) return;
+    try {
+      const { data: existingRow } = await sb
+        .from('system_settings')
+        .select('settings_json')
+        .eq('id', 'field_force_action_types')
+        .maybeSingle();
+
+      const prevJson =
+        existingRow?.settings_json && typeof existingRow.settings_json === 'object'
+          ? (existingRow.settings_json as Record<string, any>)
+          : {};
+      const byCode: Record<string, string> = { ...(prevJson.byCode || {}) };
+      const byId: Record<string, string> = { ...(prevJson.byId || {}) };
+
+      if (removeKeys) {
+        if (removeKeys.code) delete byCode[removeKeys.code];
+        if (removeKeys.id) delete byId[String(removeKeys.id)];
+      }
+
+      entries.forEach((entry) => {
+        const val = typeof entry.actionType === 'string' ? entry.actionType.trim() : '';
+        if (entry.code) {
+          if (val) byCode[entry.code] = val;
+          else delete byCode[entry.code];
+        }
+        if (entry.id) {
+          if (val) byId[String(entry.id)] = val;
+          else delete byId[String(entry.id)];
+        }
+      });
+
+      await sb.from('system_settings').upsert(
+        {
+          id: 'field_force_action_types',
+          software_name: 'Field Force Action Types',
+          logo_data_url: null,
+          branding_json: { softwareName: 'Field Force Action Types', logoDataUrl: null },
+          settings_json: { byCode, byId },
+          updated_by: currentUser?.name || 'System',
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+    } catch (err) {
+      console.warn('Notice syncing employee action_type to system_settings:', err);
+    }
+  };
+
   const refreshFieldForce = async () => {
     const sb = getSupabase();
     if (sb) {
       try {
-        const { data, error } = await sb
-          .from('field_force_reps')
-          .select('*')
-          .order('id', { ascending: true });
+        const [repsRes, actionTypeBackupRes] = await Promise.all([
+          sb.from('field_force_reps').select('*').order('id', { ascending: true }),
+          sb
+            .from('system_settings')
+            .select('settings_json')
+            .eq('id', 'field_force_action_types')
+            .maybeSingle(),
+        ]);
+        const { data, error } = repsRes;
+        const backupJson =
+          !actionTypeBackupRes.error &&
+          actionTypeBackupRes.data?.settings_json &&
+          typeof actionTypeBackupRes.data.settings_json === 'object'
+            ? (actionTypeBackupRes.data.settings_json as Record<string, any>)
+            : {};
+        const backupByCode: Record<string, string> = backupJson.byCode || {};
+        const backupById: Record<string, string> = backupJson.byId || {};
+
         if (!error && Array.isArray(data)) {
           const mapped: FieldForceRep[] = data
             .filter((row: any) => !isTestOrMockRep(row))
@@ -4103,7 +4171,11 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               email: row.email || undefined,
               designation: row.designation || '',
               fieldForceType: row.field_force_type || undefined,
-              actionType: row.action_type || undefined,
+              actionType:
+                row.action_type ||
+                (row.code ? backupByCode[row.code] : undefined) ||
+                backupById[String(row.id)] ||
+                undefined,
               department: row.department || undefined,
               departments: Array.isArray(row.departments)
                 ? row.departments
@@ -16304,6 +16376,15 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setFieldForceReps((prev) =>
               prev.map((r) => (r.id === id ? { ...r, id: dbId } : r))
             );
+            if (newRep.actionType) {
+              await syncFieldForceActionTypeBackup([
+                { id: dbId, code: newRep.code, actionType: newRep.actionType },
+              ]);
+            }
+          } else if (newRep.actionType) {
+            await syncFieldForceActionTypeBackup([
+              { id, code: newRep.code, actionType: newRep.actionType },
+            ]);
           }
         }
       })();
@@ -16425,6 +16506,17 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.warn('Notice updating field_force_reps in Supabase:', error.message);
           break;
         }
+        if (updates.actionType !== undefined || updates.code !== undefined) {
+          const nextActionType =
+            updates.actionType !== undefined ? updates.actionType : target?.actionType;
+          await syncFieldForceActionTypeBackup([
+            {
+              id: repId,
+              code: updates.code || target?.code,
+              actionType: nextActionType || '',
+            },
+          ]);
+        }
       })();
     }
   };
@@ -16443,6 +16535,7 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? sb.from('field_force_reps').delete().eq('id', Number(repId))
         : sb.from('field_force_reps').delete().eq('code', target?.code || repId);
       q.then();
+      syncFieldForceActionTypeBackup([], { id: repId, code: target?.code });
     }
   };
 

@@ -2127,6 +2127,9 @@ export const FieldForcePage: React.FC = () => {
                             {act}
                           </option>
                         ))}
+                        {formActionType && !ACTION_TYPES.includes(formActionType) && (
+                          <option value={formActionType}>{formActionType}</option>
+                        )}
                       </select>
                     </div>
 
@@ -3537,6 +3540,9 @@ export const FieldForcePage: React.FC = () => {
                             {act}
                           </option>
                         ))}
+                        {formActionType && !ACTION_TYPES.includes(formActionType) && (
+                          <option value={formActionType}>{formActionType}</option>
+                        )}
                       </select>
                     </div>
 
