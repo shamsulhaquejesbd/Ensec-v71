@@ -104,7 +104,6 @@ type PayrollTab =
   | 'attendance'
   | 'leaves'
   | 'loans'
-  | 'overtime'
   | 'bonuses'
   | 'processing'
   | 'salary_sheets'
@@ -128,7 +127,6 @@ export const PayrollModule: React.FC = () => {
     rejectedAttendanceAttempts,
     leaveRecords,
     advanceLoans,
-    overtimeRecords,
     bonusRecords,
     monthlyPayrollRuns,
     salaryPaymentRecords,
@@ -145,9 +143,6 @@ export const PayrollModule: React.FC = () => {
     applyAdvanceLoan,
     approveAdvanceLoan,
     earlySettleAdvanceLoan,
-    addOvertimeRecord,
-    approveOvertimeRecord,
-    rejectOvertimeRecord,
     addBonusRecord,
     approveBonusRecord,
     generateMonthlySalaryRun,
@@ -300,7 +295,6 @@ export const PayrollModule: React.FC = () => {
   const [viewingLoanSchedule, setViewingLoanSchedule] = useState<AdvanceLoanRecord | null>(null);
   const [settlingLoan, setSettlingLoan] = useState<AdvanceLoanRecord | null>(null);
 
-  const [showOvertimeModal, setShowOvertimeModal] = useState<boolean>(false);
   const [showBonusModal, setShowBonusModal] = useState<boolean>(false);
 
   const [showDisburseModal, setShowDisburseModal] = useState<boolean>(false);
@@ -336,12 +330,6 @@ export const PayrollModule: React.FC = () => {
   const [loanTenure, setLoanTenure] = useState<number>(1);
   const [loanStartMonth, setLoanStartMonth] = useState<string>(currentMonthIso);
   const [loanReason, setLoanReason] = useState<string>('');
-
-  // Form state for Overtime
-  const [otEmployeeId, setOtEmployeeId] = useState<string>('');
-  const [otDate, setOtDate] = useState<string>(todayIso);
-  const [otHours, setOtHours] = useState<number>(0);
-  const [otReason, setOtReason] = useState<string>('');
 
   // Form state for Bonus
   const [bnsEmployeeId, setBnsEmployeeId] = useState<string>('');
@@ -1006,7 +994,7 @@ export const PayrollModule: React.FC = () => {
           </div>
         </div>
 
-        {/* 13 Section Tabs Navigation */}
+        {/* 12 Section Tabs Navigation */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-t border-slate-100 dark:border-slate-800 pt-3 scrollbar-none">
           {[
             { id: 'dashboard', label: '1. Dashboard', icon: BarChart3 },
@@ -1014,14 +1002,13 @@ export const PayrollModule: React.FC = () => {
             { id: 'attendance', label: '3. Attendance', icon: Clock },
             { id: 'leaves', label: '4. Leaves', icon: Calendar },
             { id: 'loans', label: '5. Advances & Loans', icon: Receipt },
-            { id: 'overtime', label: '6. Overtime', icon: Clock },
-            { id: 'bonuses', label: '7. Bonuses & Incentives', icon: Gift },
-            { id: 'processing', label: '8. Monthly Run', icon: RotateCcw },
-            { id: 'salary_sheets', label: '9. Salary Sheets', icon: FileText },
-            { id: 'payments', label: '10. Disbursements', icon: CreditCard },
-            { id: 'payslips', label: '11. Payslips', icon: Printer },
-            { id: 'reports', label: '12. Reports (13)', icon: PieChart },
-            { id: 'settings', label: '13. Settings', icon: Settings },
+            { id: 'bonuses', label: '6. Bonuses & Incentives', icon: Gift },
+            { id: 'processing', label: '7. Monthly Run', icon: RotateCcw },
+            { id: 'salary_sheets', label: '8. Salary Sheets', icon: FileText },
+            { id: 'payments', label: '9. Disbursements', icon: CreditCard },
+            { id: 'payslips', label: '10. Payslips', icon: Printer },
+            { id: 'reports', label: '11. Reports (13)', icon: PieChart },
+            { id: 'settings', label: '12. Settings', icon: Settings },
           ].map((tab) => {
             const Icon = tab.icon;
             const isCurrent = activeTab === tab.id;
@@ -2968,118 +2955,7 @@ export const PayrollModule: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 6: OVERTIME MANAGEMENT                                            */}
-      {/* ========================================================================= */}
-      {activeTab === 'overtime' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                Overtime Hour Tracking & Approvals
-              </h2>
-              <p className="text-xs text-slate-500">
-                Hourly rate formula: `(Basic / 208 hrs) * Multiplier ({payrollSettings?.overtimeConfig?.hourlyRateMultiplier ?? 1.5}x)`.
-              </p>
-            </div>
-            {canCreatePayroll && (
-              <button
-                onClick={() => {
-                  setOtEmployeeId(fieldForceReps[0]?.id || '');
-                  setShowOvertimeModal(true);
-                }}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Log Overtime</span>
-              </button>
-            )}
-          </div>
-
-          {/* Overtime Table */}
-          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[11px] font-semibold uppercase">
-                    <th className="py-3 px-4">Employee</th>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Month</th>
-                    <th className="py-3 px-4 text-right">Hours</th>
-                    <th className="py-3 px-4 text-right">Rate / Hr</th>
-                    <th className="py-3 px-4 text-right font-black">Total Overtime Pay</th>
-                    <th className="py-3 px-4">Reason</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {overtimeRecords.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="py-10 text-center text-slate-500 dark:text-slate-400">
-                        No overtime records found.
-                      </td>
-                    </tr>
-                  ) : (
-                    overtimeRecords.map((ot) => (
-                      <tr key={ot.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900 dark:text-white">{ot.employeeName}</div>
-                          <span className="font-mono text-[10px] text-blue-600">{ot.employeeCode}</span>
-                        </td>
-                        <td className="py-3 px-4 font-mono">{ot.date}</td>
-                        <td className="py-3 px-4">{ot.monthYear}</td>
-                        <td className="py-3 px-4 text-right font-bold">{ot.hours} hrs</td>
-                        <td className="py-3 px-4 text-right font-mono">৳ {ot.ratePerHourBDT}</td>
-                        <td className="py-3 px-4 text-right font-mono font-black text-blue-600">
-                          ৳ {(ot.totalAmountBDT || 0).toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 text-slate-500 italic max-w-xs truncate">{ot.reason}</td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              ot.status === 'Approved'
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : ot.status === 'Rejected'
-                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                            }`}
-                          >
-                            {ot.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {ot.status === 'Pending' &&
-                            (canApprovePayroll ? (
-                              <div className="inline-flex gap-1">
-                                <button
-                                  onClick={() => approveOvertimeRecord(ot.id, currentUser?.name || 'Factory Head')}
-                                  className="px-2 py-1 rounded bg-emerald-600 text-white font-bold text-[10px]"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => rejectOvertimeRecord(ot.id, 'Hours not authorized')}
-                                  className="px-2 py-1 rounded bg-rose-600 text-white font-bold text-[10px]"
-                                >
-                                  Reject
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-[11px] text-slate-400 font-semibold">Pending Approval</span>
-                            ))}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SECTION 7: BONUSES & INCENTIVES                                           */}
+      {/* SECTION 6: BONUSES & INCENTIVES                                           */}
       {/* ========================================================================= */}
       {activeTab === 'bonuses' && (
         <div className="space-y-4">
