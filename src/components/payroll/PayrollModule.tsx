@@ -68,10 +68,10 @@ import {
   DEFAULT_MAX_GPS_ACCURACY_METERS,
   DEFAULT_SHIFT_END_TIME,
   DEFAULT_SHIFT_START_TIME,
+  calculateNetWorkingHours,
   calculateShiftAttendanceStatus,
   formatLateDuration,
   formatTime12Hour,
-  parseTimeToMinutes,
 } from '../../lib/geofence.ts';
 import {
   EmployeeCategory,
@@ -462,15 +462,12 @@ export const PayrollModule: React.FC = () => {
       rec.assignedOfficeName || emp?.assignedOfficeName || emp?.branchWorkplace || 'Head Office';
     const checkIn = rec.checkInTime || rec.inTime || '';
     const checkOut = rec.checkOutTime || rec.outTime || '';
-    let workHrs = typeof rec.workHours === 'number' ? rec.workHours : 0;
-    if (!workHrs && checkIn && checkOut) {
-      const inM = parseTimeToMinutes(checkIn);
-      const outM = parseTimeToMinutes(checkOut);
-      if (inM !== null && outM !== null) {
-        const diff = outM >= inM ? outM - inM : outM + 1440 - inM;
-        workHrs = Math.round((diff / 60) * 100) / 100;
-      }
-    }
+    const workHrs =
+      checkIn && checkOut
+        ? calculateNetWorkingHours(checkIn, checkOut)
+        : typeof rec.workHours === 'number'
+        ? rec.workHours
+        : 0;
     const lateMins = rec.lateDurationMinutes ?? rec.lateMinutes ?? 0;
     const checkInLoc =
       typeof rec.checkInLatitude === 'number' && typeof rec.checkInLongitude === 'number'

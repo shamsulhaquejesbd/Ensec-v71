@@ -344,6 +344,22 @@ export interface ShiftCalculationResult {
   overtimeHours: number;
 }
 
+export function calculateNetWorkingHours(
+  checkInTime?: string | null,
+  checkOutTime?: string | null
+): number {
+  const checkInMins = parseTimeToMinutes(checkInTime || undefined);
+  const checkOutMins = parseTimeToMinutes(checkOutTime || undefined);
+  if (checkInMins === null || checkOutMins === null) return 0;
+  const diffMins =
+    checkOutMins >= checkInMins
+      ? checkOutMins - checkInMins
+      : checkOutMins + 1440 - checkInMins;
+  const lunchDeductMins = diffMins >= 300 ? 60 : 0;
+  const netMins = Math.max(0, diffMins - lunchDeductMins);
+  return Math.round((netMins / 60) * 100) / 100;
+}
+
 export function calculateShiftAttendanceStatus(params: {
   checkInTime: string;
   checkOutTime?: string;
@@ -374,8 +390,7 @@ export function calculateShiftAttendanceStatus(params: {
   let totalWorkingHours = 0;
   let overtimeHours = 0;
   if (checkInMins !== null && checkOutMins !== null) {
-    const diffMins = checkOutMins >= checkInMins ? checkOutMins - checkInMins : checkOutMins + 1440 - checkInMins;
-    totalWorkingHours = Math.round((diffMins / 60) * 100) / 100;
+    totalWorkingHours = calculateNetWorkingHours(params.checkInTime, params.checkOutTime);
     if (totalWorkingHours > standardHours) {
       overtimeHours = Math.round((totalWorkingHours - standardHours) * 100) / 100;
     }

@@ -229,6 +229,7 @@ import {
   DEFAULT_SHIFT_END_TIME,
   DEFAULT_GRACE_PERIOD_MINUTES,
   evaluateGeofenceAttendance,
+  calculateNetWorkingHours,
   calculateShiftAttendanceStatus,
   isValidCoordinatePair,
 } from '../lib/geofence.ts';
@@ -21095,8 +21096,11 @@ export const ERPProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         halfDay++;
         present += 0.5;
       }
+      const recIn = r.checkInTime || r.inTime;
+      const recOut = r.checkOutTime || r.outTime;
+      const netHrs = recIn && recOut ? calculateNetWorkingHours(recIn, recOut) : r.workHours || 0;
       overtimeHours += r.overtimeHours || 0;
-      totalWorkHours += r.workHours || 0;
+      totalWorkHours += netHrs;
       totalLateMinutes += r.lateDurationMinutes ?? r.lateMinutes ?? 0;
     });
 
