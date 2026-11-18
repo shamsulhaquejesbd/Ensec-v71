@@ -2281,7 +2281,7 @@ export const PayrollModule: React.FC = () => {
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[11px] font-semibold uppercase">
                         <th className="py-3 px-4">Employee</th>
-                        <th className="py-3 px-4">Department / Assigned Office</th>
+                        <th className="py-3 px-4">Employee Category</th>
                         <th className="py-3 px-4">Status ({selectedDateForAtt})</th>
                         <th className="py-3 px-4">Check In</th>
                         <th className="py-3 px-4">Check Out</th>
@@ -2429,10 +2429,7 @@ export const PayrollModule: React.FC = () => {
                               <span className="font-mono text-[10px] text-blue-600">{emp.code}</span>
                             </td>
                             <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                              <div>{emp.department || 'Operations'}</div>
-                              <span className="text-[10px] text-slate-400">
-                                {emp.assignedOfficeName || emp.branchWorkplace || 'Head Office'}
-                              </span>
+                              {emp.employeeCategory || '—'}
                             </td>
                             <td className="py-3 px-4">
                               <span
