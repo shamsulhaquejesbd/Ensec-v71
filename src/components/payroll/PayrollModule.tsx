@@ -576,7 +576,7 @@ export const PayrollModule: React.FC = () => {
       .filter((emp) => {
         const office = emp.assignedOfficeName || emp.branchWorkplace || 'Head Office';
         if (q) {
-          const hay = `${emp.code} ${emp.name} ${emp.department || ''} ${office}`.toLowerCase();
+          const hay = `${emp.code} ${emp.name} ${emp.department || ''} ${emp.employeeCategory || ''} ${office}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         if (attDeptFilter !== 'All' && (emp.department || 'Operations') !== attDeptFilter) return false;
@@ -1932,7 +1932,7 @@ export const PayrollModule: React.FC = () => {
                       <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[11px] font-semibold uppercase">
                         <th className="py-2.5 px-3">Employee ID</th>
                         <th className="py-2.5 px-3">Employee Name</th>
-                        <th className="py-2.5 px-3">Department</th>
+                        <th className="py-2.5 px-3">Employee Category</th>
                         <th className="py-2.5 px-3">Assigned Office</th>
                         <th className="py-2.5 px-3 text-center">Present</th>
                         <th className="py-2.5 px-3 text-center">Late</th>
@@ -1953,7 +1953,7 @@ export const PayrollModule: React.FC = () => {
                             <div className="text-[10px] text-slate-400">{row.emp.designation || 'Executive'}</div>
                           </td>
                           <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
-                            {row.emp.department || 'Operations'}
+                            {row.emp.employeeCategory || '—'}
                           </td>
                           <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{row.assignedOffice}</td>
                           <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-600 tabular-nums">

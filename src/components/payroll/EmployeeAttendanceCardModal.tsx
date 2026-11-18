@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useERP } from '../../context/ERPContext.tsx';
 import { getSupabase } from '../../lib/supabase.ts';
-import { formatTime12Hour, parseTimeToMinutes } from '../../lib/geofence.ts';
+import { calculateNetWorkingHours, formatTime12Hour, parseTimeToMinutes } from '../../lib/geofence.ts';
 import type { FieldForceRep } from '../../types/erp.ts';
 import type { AttendanceRecord, AttendanceStatus } from '../../types/payroll.ts';
 import type { OvertimeAttendance, OvertimeRequest } from '../../types/overtime.ts';
@@ -448,6 +448,8 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
   const dayRows: DayCardRow[] = useMemo(() => {
     const mm = String(monthNum).padStart(2, '0');
     const rows: DayCardRow[] = [];
+    const standardDailyHours =
+      Number(payrollSettings?.standardDailyHours || payrollSettings?.standardWorkHoursPerDay) || 8;
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dd = String(day).padStart(2, '0');
@@ -460,9 +462,10 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
       const checkInTime = normalizeTimeDisplay(att?.checkInTime || att?.inTime);
       const checkOutTime = normalizeTimeDisplay(att?.checkOutTime || att?.outTime);
 
-      // Compute regular hours from stored workHours or checkIn/checkOut span
+      // Compute regular hours using lunch-adjusted net working hours (>= 5h span deducts 1h)
       let regularWorkingHours: number | null = null;
       let rawShiftSpanHours = 0;
+      let netShiftHours = 0;
       if (checkInTime && checkOutTime) {
         const inM = parseTimeToMinutes(checkInTime);
         const outM = parseTimeToMinutes(checkOutTime);
@@ -470,11 +473,12 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
           const diff = outM >= inM ? outM - inM : outM + 1440 - inM;
           rawShiftSpanHours = Math.round((diff / 60) * 100) / 100;
         }
+        netShiftHours = calculateNetWorkingHours(checkInTime, checkOutTime);
       }
-      if (att && typeof att.workHours === 'number' && att.workHours > 0) {
+      if (checkInTime && checkOutTime && netShiftHours > 0) {
+        regularWorkingHours = netShiftHours;
+      } else if (att && typeof att.workHours === 'number' && att.workHours > 0) {
         regularWorkingHours = Math.round(att.workHours * 100) / 100;
-      } else if (rawShiftSpanHours > 0) {
-        regularWorkingHours = rawShiftSpanHours;
       }
 
       // Overtime aggregation for this date from overtime_requests (+ attendance fallback)
@@ -486,6 +490,7 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
       const otExpectedEnd = normalizeTimeDisplay(primaryOt?.expectedEndTime);
 
       let otHours: number | null = null;
+      let hasExplicitOt = false;
       if (activeOtReqs.length > 0) {
         const sumReqOt = activeOtReqs.reduce((sum, req) => {
           const matchedAtt = dayOtAtts.find((a) => a.requestId === req.id);
@@ -498,24 +503,40 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
           return sum + (Number(actual) || 0);
         }, 0);
         otHours = Math.round(sumReqOt * 100) / 100;
+        hasExplicitOt = true;
       } else if (dayOtAtts.length > 0) {
         const sumAttOt = dayOtAtts.reduce(
           (sum, a) => sum + (Number(a.actualOvertimeHours) || 0),
           0
         );
         otHours = sumAttOt > 0 ? Math.round(sumAttOt * 100) / 100 : null;
+        hasExplicitOt = otHours !== null && otHours > 0;
+      } else if (checkInTime && checkOutTime) {
+        // Recompute shift-based overtime after 1h lunch deduction so pre-fix DB rows don't inflate OT
+        otHours =
+          netShiftHours > standardDailyHours
+            ? Math.round((netShiftHours - standardDailyHours) * 100) / 100
+            : null;
       } else if (att && typeof att.overtimeHours === 'number' && att.overtimeHours > 0) {
         otHours = Math.round(att.overtimeHours * 100) / 100;
+        hasExplicitOt = true;
       }
 
-      // Physical card lunch rule: Working hour + Overtime hour - 1 hr lunch (when shift span >= 5h)
+      // Physical card lunch rule: Working hour + Overtime hour - 1 hr lunch (when total >= 5h)
       let netLunchAdjustedHours: number | null = null;
-      const baseReg = rawShiftSpanHours > 0 ? rawShiftSpanHours : regularWorkingHours || 0;
-      if (baseReg > 0) {
-        const lunchDeduct = baseReg >= 5 ? 1 : 0;
+      if (rawShiftSpanHours > 0) {
+        const extraOt = hasExplicitOt ? otHours || 0 : 0;
+        const grossTotal = rawShiftSpanHours + extraOt;
+        const lunchDeduct = rawShiftSpanHours >= 5 || grossTotal >= 5 ? 1 : 0;
         netLunchAdjustedHours = Math.max(
           0,
-          Math.round((baseReg + (otHours || 0) - lunchDeduct) * 100) / 100
+          Math.round((grossTotal - lunchDeduct) * 100) / 100
+        );
+      } else if (regularWorkingHours && regularWorkingHours > 0) {
+        const extraOt = hasExplicitOt ? otHours || 0 : 0;
+        netLunchAdjustedHours = Math.max(
+          0,
+          Math.round((regularWorkingHours + extraOt) * 100) / 100
         );
       } else if (otHours && otHours > 0) {
         netLunchAdjustedHours = otHours;
@@ -547,12 +568,15 @@ export const EmployeeAttendanceCardModal: React.FC<EmployeeAttendanceCardModalPr
     monthlyAttendancesByDate,
     monthlyOvertimeRequests,
     monthlyOvertimeAttendancesByDate,
+    payrollSettings,
   ]);
 
   // Summary metrics
   const summary = useMemo(() => {
     const standardWorkingDays =
-      Number(payrollSettings?.standardWorkingDaysPerMonth ?? payrollSettings?.workingDaysPerMonth) || 26;
+      dayRows.length > 0
+        ? dayRows.filter((r) => !r.isWeekendFriday).length
+        : Number(payrollSettings?.standardWorkingDaysPerMonth ?? payrollSettings?.workingDaysPerMonth) || 26;
     let presentDays = 0;
     let lateDays = 0;
     let halfDays = 0;
